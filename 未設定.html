@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>非日常への招待状 - 連続謎解きミステリー</title>
+    <style>
+        /* 背景に不気味な洋館の画像を設定 */
+        body { 
+            font-family: 'Georgia', 'serif', 'ヒラギノ明朝 ProN', 'serif'; 
+            text-align: center; 
+            background: #0d0e12 url('https://unsplash.com') no-repeat center center fixed; 
+            background-size: cover;
+            color: #d1d5db; 
+            padding: 20px; 
+            margin: 0;
+        }
+        
+        /* 背景画像に重ねる黒い霧のようなフィルター */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); 
+            z-index: 5; 
+            pointer-events: none;
+            transition: background 0.8s cubic-bezier(0.1, 0.8, 0.25, 1);
+        }
+
+        /* 正解時に画面全体を白く染める */
+        body.flash::before {
+            background: rgba(255, 255, 255, 2);
+            z-index: 9999;
+            transition: background 0s;
+        }
+
+        /* 中央のコンテナ */
+        .container { 
+            max-width: 500px; 
+            margin: 60px auto; 
+            background: rgba(22, 26, 35, 0.85); 
+            backdrop-filter: blur(8px); 
+            padding: 40px 30px; 
+            border-radius: 4px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(255,255,255,0.05); 
+            border: 1px solid rgba(74, 85, 104, 0.5); 
+            position: relative;
+            z-index: 10;
+        }
+        
+        h1 { color: #e2e8f0; font-size: 20px; letter-spacing: 4px; font-weight: normal; border-bottom: 1px solid #4a5568; padding-bottom: 15px; }
+        
+        /* 命の灯火をイメージしたタイマー */
+        .timer-box { font-size: 20px; font-weight: bold; color: #ef4444; background: rgba(30, 27, 27, 0.9); padding: 10px 20px; border-radius: 2px; margin-bottom: 25px; display: inline-block; min-width: 160px; border: 1px solid #7f1d1d; letter-spacing: 2px; }
+        
+        /* 謎の文字列 */
+        .problem { font-size: 26px; font-weight: bold; margin: 35px 0; color: #93c5fd; letter-spacing: 6px; line-height: 1.6; text-shadow: 0 0 10px rgba(147, 197, 253, 0.3); }
+        .hint { font-size: 13px; color: #9ca3af; margin-bottom: 25px; min-height: 20px; font-style: italic; }
+        
+        /* 入力エリア */
+        input[type="text"] { width: 80%; padding: 12px; font-size: 16px; background: rgba(15, 18, 25, 0.9); color: #f3f4f6; border: 1px solid #4a5568; border-radius: 2px; text-align: center; letter-spacing: 2px; outline: none; transition: border 0.3s; }
+        input[type="text"]:focus { border: 1px solid #93c5fd; box-shadow: 0 0 8px rgba(147, 197, 253, 0.2); }
+        
+        /* 儀式を進めるボタン */
+        button { margin-top: 20px; padding: 12px 30px; font-size: 15px; background: #1e3a8a; color: #e2e8f0; border: 1px solid #3b82f6; border-radius: 2px; cursor: pointer; letter-spacing: 2px; transition: background 0.3s; }
+        button:hover { background: #2563eb; }
+        
+        /* 絶望（ゲームオーバー時）のボタン */
+        .retry-btn { background: #3f3f46; border: 1px solid #71717a; }
+        .retry-btn:hover { background: #52525b; }
+        
+        .result { margin-top: 25px; font-size: 15px; min-height: 30px; letter-spacing: 1px; }
+        .success { color: #34d399; text-shadow: 0 0 8px rgba(52, 211, 153, 0.3); }
+        .fail { color: #f87171; text-shadow: 0 0 8px rgba(248, 113, 113, 0.3); }
+        .clear-msg { font-size: 24px; color: #fbbf24; font-weight: normal; letter-spacing: 4px; text-shadow: 0 0 12px rgba(251, 191, 36, 0.4); }
+    </style>
+</head>
+<body onclick="initAudio()">
+
+<div class="container">
+    <div id="timerDisplay" class="timer-box">残り時間 03:00</div>
+
+    <h1 id="questionTitle">第一の試練：暗号を解け</h1>
+    
+    <div id="problemText" class="problem">
+        イ1　タ2　サ3　シ4
+    </div>
+    
+    <div id="hintText" class="hint">
+        手がかり：数字は足の数（本数）を表しています。4マスの生き物は？
+    </div>
+    
+    <div id="inputArea">
+        <input type="text" id="answerInput" placeholder="答えを導け..." onkeydown="handleKeyDown(event)">
+        <br>
+        <button onclick="checkAnswer()">解答する</button>
+    </div>
+    
+    <div id="resultMessage" class="result"></div>
+</div>
+
+<!-- 音声アセット -->
+<audio id="bgm" src="https://mixkit.co" loop></audio>
+<audio id="seSuccess" src="https://mixkit.co"></audio>
+<audio id="seFail" src="https://mixkit.co"></audio>
+
+<script>
+const quizData = [
+    {
+        title: "第一の試練：暗号を解け",
+        problem: "イ1　タ2　サ3　シ4",
+        hint: "手がかり：数字は足の数（本数）を表しています。4マスの生き物は？",
+        answers: ["しか", "シカ"]
+    },
+    {
+        title: "第二の試練：法則を見つけろ",
+        problem: "T → O → T → T → ❓",
+        hint: "手がかり：数字を英語（One, Two...）で数えて頭文字を並べると？",
+        answers: ["f", "エフ"]
+    },
+    {
+        title: "最終試練：言葉のパズル",
+        problem: "「くり」の真ん中に<br>「る」を入れると？",
+        hint: "手がかり：く・る・り。回る様子を別の言葉で？",
+        answers: ["くるり", "クルリ"]
+    }
+];
+
+let currentStep = 0;
+let timeLimit = 180; 
+let timerInterval = null;
+let audioInitialized = false;
+
+window.onload = function() {
+    startTimer();
+    // 開始時に最初から入力欄にカーソルを合わせる
+    document.getElementById("answerInput").focus();
+};
+
+function initAudio() {
+    if (!audioInitialized) {
+        const bgm = document.getElementById("bgm");
+        bgm.volume = 0.4; 
+        bgm.play().catch(e => console.log("Audio play blocked"));
+        audioInitialized = true;
+    }
+}
+
+function startTimer() {
+    const display = document.getElementById("timerDisplay");
+    
+    timerInterval = setInterval(function() {
+        let minutes = Math.floor(timeLimit / 60);
+        let seconds = timeLimit % 60;
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+
+        display.textContent = "残り時間 " + minutes + ":" + seconds;
+
+        if (timeLimit <= 30) {
+            display.style.color = timeLimit % 2 === 0 ? "#ef4444" : "transparent";
+            display.style.textShadow = timeLimit % 2 === 0 ? "0 0 12px #ef4444" : "none";
+        }
+
+        if (timeLimit <= 0) {
+            clearInterval(timerInterval);
+            gameOver();
+        }
+
+        timeLimit--;
+    }, 1000);
+}
+
+function handleKeyDown(event) {
+    if (event.key === 'Enter') {
+        checkAnswer();
+    }
+}
+
+function checkAnswer() {
+    initAudio(); 
+    
+    const inputElement = document.getElementById("answerInput");
+    let userAnswer = inputElement.value.trim();
+    const resultDiv = document.getElementById("resultMessage");
+    const currentQuiz = quizData[currentStep];
+    
+    if (userAnswer === "") {
+        document.getElementById("seFail").currentTime = 0;
+        document.getElementById("seFail").play();
+        resultDiv.className = "result fail";
+        resultDiv.textContent = "……沈黙は答えにならない。";
+        // 空欄時も入力欄へ自動復帰
+        inputElement.focus();
+        return;
+    }
+    
+    userAnswer = userAnswer.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+        return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+    }).toLowerCase();
+    
+    if (currentQuiz.answers.includes(userAnswer)) {
+        currentStep++;
+        inputElement.value = "";
+        
+        document.getElementById("seSuccess").currentTime = 0;
+        document.getElementById("seSuccess").play();
+
+        document.body.classList.add("flash");
+        setTimeout(() => {
+            document.body.classList.remove("flash");
+        }, 50); 
+        
+        if (currentStep < quizData.length) {
+            resultDiv.className = "result success";
+            resultDiv.textContent = "扉が開いた。次の試練へ……";
+            setTimeout(showQuestion, 1000);
+        } else {
+            clearInterval(timerInterval);
+            gameClear();
+        }
+    } else {
+        document.getElementById("seFail").currentTime = 0;
+        document.getElementById("seFail").play();
+        resultDiv.className = "result fail";
+        resultDiv.textContent = "違う。その答えは真実ではない。";
+        
+        // 【追加】間違えたら文字を消去し、自動的にカーソルを戻す
+        inputElement.value = "";
+        inputElement.focus();
+    }
+}
+
+function showQuestion() {
+    const currentQuiz = quizData[currentStep];
+    document.getElementById("questionTitle").textContent = currentQuiz.title;
+    document.getElementById("problemText").innerHTML = currentQuiz.problem;
+    document.getElementById("hintText").textContent = currentQuiz.hint;
+    document.getElementById("resultMessage").textContent = "";
+    // 次の問題に進んだときも自動でカーソルを合わせる
+    document.getElementById("answerInput").focus();
+}
+
+function gameClear() {
+    document.getElementById("inputArea").style.display = "none";
+    document.getElementById("questionTitle").textContent = "👁️ 真実への到達";
+    document.getElementById("problemText").innerHTML = "<span class='clear-msg'>すべての謎が解き明かされた</span>";
+    document.getElementById("hintText").textContent = "あなたは無事に、この迷宮から生還した。";
+    
+    const display = document.getElementById("timerDisplay");
+    display.style.background = "#064e3b";
+    display.style.color = "#10b981";
+    display.style.border = "1px solid #047857";
+    display.textContent = "生還";
+    
+    document.getElementById("resultMessage").className = "result success";
+    document.getElementById("resultMessage").innerHTML = "見事な洞察力だ。ゲームは終わった。";
+}
+
+function gameOver() {
+    document.getElementById("inputArea").style.display = "none";
+    document.getElementById("questionTitle").textContent = "⛓️ 閉ざされた運命";
+    document.getElementById("problemText").innerHTML = "<span class='fail'>時間切れ、閉幕。</span>";
+    document.getElementById("hintText").textContent = "闇があなたを包み込んだ……";
+    document.getElementById("timerDisplay").textContent = "終焉";
+    
+    const resultDiv = document.getElementById("resultMessage");
+    resultDiv.innerHTML = '<button onclick="location.reload()" class="retry-btn">もう一度、運命に抗う</button>';
+}
+</script>
+</body>
